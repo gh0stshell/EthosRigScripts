@@ -7,17 +7,16 @@
 # Crontab = */15 * * * * sudo /home/ethos/rigcheck.sh
 #
 # Set TESTING to false to enable auto-restart/reboot, set as true to test the script
-# Add the following line to your remote config or local.conf in order for autoreboot
-# to actually work without the # in front
-# autoreboot=5
 TESTING=false
 # Add the following line to your remote config or local.conf in order for autoreboot
 # or reboot to actually work, add without the # at the beginning of the line
 # autoreboot=5
+#
 # Establishing log file
 LOG=/home/ethos/rig.log
-# Change number on the next line to what you set autoreboots too in your
-# config file, default is 5
+#
+# Change number on the next line to what you set autoreboots to in your
+# config file, the default is 5
 CONFREB=5
 
 if [ "$EUID" != 0 ]
