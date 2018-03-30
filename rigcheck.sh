@@ -17,10 +17,20 @@ LOG=/home/ethos/rig.log
 #
 # Change number on the next line to what you set autoreboots to in your
 # config file, the default is 5
-CONFREB=0
+CONFREB=5
+#
+# Setting file location for error detection
+ERR=$(cat /var/run/ethos/status.file)
+#
+# Pulling miner location
+LOC=$(/opt/ethos/sbin/ethos-readconf loc)
+#
+# Setting AutoReboot file location
+autoreboot=$(/opt/ethos/sbin/ethos-readconf autoreboot)
+rebcount=$(cat /opt/ethos/etc/autorebooted.file)
 
 if [ "$EUID" != 0 ]
-  then echo "Need to run script as root, if on a Shell In A Box/SSH, use sudo $0"
+  then echo "Need to run script as root, if on Shell In A Box/SSH, use sudo $0"
   exit
 fi
 
@@ -41,6 +51,27 @@ if [ ${REBC} -ge "$CONFREB" ]; then
   ACOUNT=$(cat /opt/ethos/etc/autorebooted.file)
   echo "$(date) too many autoreboots, current count is ${ACOUNT}, now going to clearing thermals..." | tee -a $"LOG"
   /opt/ethos/bin/clear-thermals
+
+elif grep -q "gpu clock problem" /var/run/ethos/status.file; then
+  CRASHED=$(cat /var/run/ethos/crashed_gpus.file)
+  echo "$(date) GPU clock problem detected on GPU(s) ${CRASHED}, rebooting..." | tee -a $"LOG"
+  #rm -f /var/run/ethos/crashed_gpus.file
+  ((rebcount++))
+  echo $rebcount > /opt/ethos/etc/autorebooted.file
+  sudo reboot
+
+elif [[ $(date +"%M") == "00" ]] || [ -t 1 ] ; then
+  echo "$LOC Disallowed, Not mining long enough or No internet or or Upating $DT" | tee -a $"LOG"
+  sudo reboot
+
+elif grep -q "gpu crashed: reboot required" /var/run/ethos/status.file; then
+  echo "$(date) GPU crash detected, rebooting..." | tee -a $"LOG"
+  sudo reboot
+
+elif grep -q "possible miner stall: check miner log" $"ERR"; then
+  echo "Miner showing erro 'possible miner stall', check logs to be safe....rebooting" | tee -a $"LOG"
+  sudo reboot
+
 else
   echo "Looking good, no work to be done, bye..."
 fi
