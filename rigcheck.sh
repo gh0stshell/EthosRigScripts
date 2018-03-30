@@ -17,7 +17,7 @@ LOG=/home/ethos/rig.log
 #
 # Change number on the next line to what you set autoreboots to in your
 # config file, the default is 5
-CONFREB=5
+CONFREB=0
 
 if [ "$EUID" != 0 ]
   then echo "Need to run script as root, if on a Shell In A Box/SSH, use sudo $0"
@@ -38,13 +38,9 @@ fi
 REBC=$(cat /opt/ethos/etc/autorebooted.file)
 #if grep -q "too many autoreboots" /var/run/ethos/status.file
 if [ ${REBC} -ge "$CONFREB" ]; then
-  #autostatus=$(cat /var/run/ethos/status.file)
   ACOUNT=$(cat /opt/ethos/etc/autorebooted.file)
   echo "$(date) too many autoreboots, current count is ${ACOUNT}, now going to clearing thermals..." | tee -a $"LOG"
   /opt/ethos/bin/clear-thermals
-#  if [ $"TESTING" = false ]; then
-#    /opt/ethos/bin/clear-thermals
-#  fi
 else
   echo "Looking good, no work to be done, bye..."
 fi
