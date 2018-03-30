@@ -58,19 +58,20 @@ elif grep -q "gpu clock problem" /var/run/ethos/status.file; then
   #rm -f /var/run/ethos/crashed_gpus.file
   ((rebcount++))
   echo $rebcount > /opt/ethos/etc/autorebooted.file
-  sudo reboot
+  /usr/bin/sudo /sbin/reboot
 
 elif [[ $(date +"%M") == "00" ]] || [ -t 1 ] ; then
   echo "$LOC Disallowed, Not mining long enough or No internet or or Upating $DT" | tee -a $"LOG"
-  sudo reboot
+  /usr/bin/sudo /sbin/reboot
 
-elif grep -q "gpu crashed: reboot required" /var/run/ethos/status.file; then
-  echo "$(date) GPU crash detected, rebooting..." | tee -a $"LOG"
-  sudo reboot
+elif [[ $error == "gpu crashed: reboot required" ]] \ || [[ $error == "possible miner stall: check miner log" ]] ; then
+  echo "CRAP! Looks to be a miner stall or GPU crash...check logs to confirm...rebooting!" | tee -a $"LOG"
+  /usr/bin/sudo /sbin/reboot
 
-elif grep -q "possible miner stall: check miner log" $"ERR"; then
-  echo "Miner showing erro 'possible miner stall', check logs to be safe....rebooting" | tee -a $"LOG"
-  sudo reboot
+elif [[ $autoreboot =~ $number ]] && [[ $autoreboot -gt $rebcount ]] ; then
+  ((rebcount++))
+  echo $rebcount > /opt/ethos/etc/autorebooted.file
+  /usr/bin/sudo /opt/ethos/bin/hard-reboot
 
 else
   echo "Looking good, no work to be done, bye..."
