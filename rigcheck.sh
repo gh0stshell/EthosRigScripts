@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# EthosGeeK Script v1.2
+# EthosGeeK Script v1.4
 # More to come!!
 #
 # chmod u+x rigcheck.sh
