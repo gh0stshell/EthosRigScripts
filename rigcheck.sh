@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# EthosGeeK Script v1.4.3
+# EthosGeeK Script v1.4.6
 # More to come!!
 #
 # chmod u+x rigcheck.sh
@@ -30,11 +30,17 @@ autoreboot=$(/opt/ethos/sbin/ethos-readconf autoreboot)
 rebcount=$(cat /opt/ethos/etc/autorebooted.file)
 #
 # Setting number variable
-number='[1-9]'
+NUMBR='[1-9]'
+#
+# Setting To and From email addresses
+EMI=jpgottech@gmail.com
+FEMI=tatiana@ethos.net
+# To have mail working you will need to install sendmail
+# sudo apt install sendmail
 
-if [ "$EUID" != 0 ]
-  then echo "Need to run script as root, if on Shell In A Box/SSH, use sudo $0"
-  exit
+if [ "$EUID" != 0 ]; then
+  echo "Need to run script as root, if on Shell In A Box/SSH, use sudo $0" | tee -a $"LOG"
+  exit 0
 fi
 
 if [ ${TESTING} = true ]; then
@@ -50,15 +56,21 @@ fi
 
 # DISABLING FOR TESTING
 REBC=$(cat /opt/ethos/etc/autorebooted.file)
+ACOUNT=$(cat /opt/ethos/etc/autorebooted.file)
 ##if grep -q "too many autoreboots" /var/run/ethos/status.file
 if [ ${REBC} -ge "$CONFREB" ]; then
-  ACOUNT=$(cat /opt/ethos/etc/autorebooted.file)
-  echo "$(date) too many autoreboots, current count is ${ACOUNT}, you need to clear thermals and check logs..." | tee -a $"LOG"
+  #ACOUNT=$(cat /opt/ethos/etc/autorebooted.file)
+  echo "$(date) Too many autoreboots, current autoreboot count is ${ACOUNT}, you need to clear thermals and check logs..." | tee -a $"LOG"
+  /usr/bin/tail -10 $"LOG" > mail.txt
+  echo "Subject: To Many Autoreboots!!" > mail.txt
+  sendmail -f ${FEMI} -s ${EMI} >> /home/ethos/mail.txt
+  # Disabling auto clear, ITS DANGEROUS!!
   #/opt/ethos/bin/clear-thermals
 
 # change if to elif after uncommenting statement above
+CRASHED=$(cat /var/run/ethos/crashed_gpus.file)
 elif grep -q "gpu clock problem" /var/run/ethos/status.file; then
-  CRASHED=$(cat /var/run/ethos/crashed_gpus.file)
+  #CRASHED=$(cat /var/run/ethos/crashed_gpus.file)
   echo "$(date) GPU clock problem detected on GPU(s) ${CRASHED}, rebooting..." | tee -a $"LOG"
   #rm -f /var/run/ethos/crashed_gpus.file
   ((rebcount++))
@@ -73,15 +85,22 @@ elif grep -q "gpu clock problem" /var/run/ethos/status.file; then
   #echo $rebcount > /opt/ethos/etc/autorebooted.file
   #/usr/bin/sudo /sbin/reboot
 
-elif [[ $error == "gpu crashed: reboot required" ]] || [[ $error == "possible miner stall: check miner log" ]] ; then
+elif [[ $error == "gpu crashed: reboot required" ]]; then
+#|| [[ $error == "possible miner stall: check miner log" ]] ; then
   echo "CRAP! Looks to be a miner stall or GPU crash...check logs to confirm...rebooting!" | tee -a $"LOG"
   #/usr/bin/sudo /sbin/reboot
   ((rebcount++))
   echo $rebcount > /opt/ethos/etc/autorebooted.file
   /usr/bin/sudo /sbin/reboot
 
+elif [[ $error == "possible miner stall: check miner log" ]]; then
+  echo "CRAP! Looks to be a miner stall...check logs...rebooting!" | tee -a $"LOG"
+  ((rebcount++))
+  echo $rebcount > /opt/ethos/etc/autorebooted.file
+  /usr/bin/sudo /sbin/reboott
+
 # Possibly accounting for daily reboots instead of just autoreboots by script, disabling
-#elif [[ $autoreboot =~ $number ]] && [[ $autoreboot -gt $rebcount ]] ; then
+#elif [[ $autoreboot =~ $NUMBR ]] && [[ $autoreboot -gt $rebcount ]] ; then
   #((rebcount++))
   #echo $rebcount > /opt/ethos/etc/autorebooted.file
   #/usr/bin/sudo /opt/ethos/bin/clear-thermals
