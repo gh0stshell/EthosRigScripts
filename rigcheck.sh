@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# EthosGeeK Script v1.4
+# EthosGeeK Script v1.4.2
 # More to come!!
 #
 # chmod u+x rigcheck.sh
@@ -28,6 +28,9 @@ LOC=$(/opt/ethos/sbin/ethos-readconf loc)
 # Setting AutoReboot file location
 autoreboot=$(/opt/ethos/sbin/ethos-readconf autoreboot)
 rebcount=$(cat /opt/ethos/etc/autorebooted.file)
+#
+# Setting number variable
+number='[1-9]'
 
 if [ "$EUID" != 0 ]
   then echo "Need to run script as root, if on Shell In A Box/SSH, use sudo $0"
@@ -45,13 +48,15 @@ if [ ${ALLOW} != 1 ]; then
   exit 0
 fi
 
+# DISABLING FOR TESTING
 REBC=$(cat /opt/ethos/etc/autorebooted.file)
-#if grep -q "too many autoreboots" /var/run/ethos/status.file
+##if grep -q "too many autoreboots" /var/run/ethos/status.file
 if [ ${REBC} -ge "$CONFREB" ]; then
   ACOUNT=$(cat /opt/ethos/etc/autorebooted.file)
   echo "$(date) too many autoreboots, current count is ${ACOUNT}, now going to clearing thermals..." | tee -a $"LOG"
   /opt/ethos/bin/clear-thermals
 
+# change if to elif after uncommenting statement above
 elif grep -q "gpu clock problem" /var/run/ethos/status.file; then
   CRASHED=$(cat /var/run/ethos/crashed_gpus.file)
   echo "$(date) GPU clock problem detected on GPU(s) ${CRASHED}, rebooting..." | tee -a $"LOG"
@@ -60,18 +65,26 @@ elif grep -q "gpu clock problem" /var/run/ethos/status.file; then
   echo $rebcount > /opt/ethos/etc/autorebooted.file
   /usr/bin/sudo /sbin/reboot
 
-elif [[ $(date +"%M") == "00" ]] || [ -t 1 ] ; then
-  echo "$LOC Disallowed, Not mining long enough or No internet or or Upating $DT" | tee -a $"LOG"
-  /usr/bin/sudo /sbin/reboot
+# Reboots when there is no issue, disabled
+#elif [[ $(date +"%M") == "00" ]] || [ -t 1 ] ; then
+ # echo "$LOC Disallowed, Not mining long enough or No internet or Upating $DT" | tee -a $"LOG"
+  #/usr/bin/sudo /sbin/reboot
+  #((rebcount++))
+  #echo $rebcount > /opt/ethos/etc/autorebooted.file
+  #/usr/bin/sudo /sbin/reboot
 
-elif [[ $error == "gpu crashed: reboot required" ]] \ || [[ $error == "possible miner stall: check miner log" ]] ; then
+elif [[ $error == "gpu crashed: reboot required" ]] || [[ $error == "possible miner stall: check miner log" ]] ; then
   echo "CRAP! Looks to be a miner stall or GPU crash...check logs to confirm...rebooting!" | tee -a $"LOG"
-  /usr/bin/sudo /sbin/reboot
-
-elif [[ $autoreboot =~ $number ]] && [[ $autoreboot -gt $rebcount ]] ; then
+  #/usr/bin/sudo /sbin/reboot
   ((rebcount++))
   echo $rebcount > /opt/ethos/etc/autorebooted.file
-  /usr/bin/sudo /opt/ethos/bin/hard-reboot
+  /usr/bin/sudo /sbin/reboot
+
+# Possibly accounting for daily reboots instead of just autoreboots by script, disabling
+#elif [[ $autoreboot =~ $number ]] && [[ $autoreboot -gt $rebcount ]] ; then
+  #((rebcount++))
+  #echo $rebcount > /opt/ethos/etc/autorebooted.file
+  #/usr/bin/sudo /opt/ethos/bin/clear-thermals
 
 else
   echo "Looking good, no work to be done, bye..."
