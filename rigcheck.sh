@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# EthosGeeK Script v1.4.2
+# EthosGeeK Script v1.4.3
 # More to come!!
 #
 # chmod u+x rigcheck.sh
@@ -53,8 +53,8 @@ REBC=$(cat /opt/ethos/etc/autorebooted.file)
 ##if grep -q "too many autoreboots" /var/run/ethos/status.file
 if [ ${REBC} -ge "$CONFREB" ]; then
   ACOUNT=$(cat /opt/ethos/etc/autorebooted.file)
-  echo "$(date) too many autoreboots, current count is ${ACOUNT}, now going to clearing thermals..." | tee -a $"LOG"
-  /opt/ethos/bin/clear-thermals
+  echo "$(date) too many autoreboots, current count is ${ACOUNT}, you need to clear thermals and check logs..." | tee -a $"LOG"
+  #/opt/ethos/bin/clear-thermals
 
 # change if to elif after uncommenting statement above
 elif grep -q "gpu clock problem" /var/run/ethos/status.file; then
