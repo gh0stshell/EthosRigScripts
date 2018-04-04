@@ -4,7 +4,8 @@
 # More to come!!
 #
 # chmod u+x rigcheck.sh
-# Crontab = */15 * * * * sudo /home/ethos/rigcheck.sh
+# Crontab -e
+# */10 * * * * sudo /home/ethos/rigcheck.sh
 #
 # Set TESTING to false to enable auto-restart/reboot, set as true to test the script
 TESTING=false
@@ -44,7 +45,7 @@ if [ "$EUID" != 0 ]; then
 fi
 
 if [ ${TESTING} = true ]; then
-  echo "$(date) $0 TESTING mode set to ${TESTING}, set to false or auto-reboot/restart will not work! Bye!" | tee -a $"LOG"
+  echo "$(date) $0 TESTING mode set to ${TESTING}, set to false or auto-reboot/restart will not work!" | tee -a $"LOG"
   exit 0
 fi
 
@@ -54,15 +55,14 @@ if [ ${ALLOW} != 1 ]; then
   exit 0
 fi
 
-# DISABLING FOR TESTING
 REBC=$(cat /opt/ethos/etc/autorebooted.file)
 ACOUNT=$(cat /opt/ethos/etc/autorebooted.file)
 ##if grep -q "too many autoreboots" /var/run/ethos/status.file
 if [ ${REBC} -ge "$CONFREB" ]; then
   #ACOUNT=$(cat /opt/ethos/etc/autorebooted.file)
-  echo "$(date) Too many autoreboots, current autoreboot count is ${ACOUNT}, you need to clear thermals and check logs..." | tee -a $"LOG"
-  /usr/bin/tail -10 $"LOG" > mail.txt
+  echo "$(date) Current autoreboot count is ${ACOUNT}, config limit is ${CONFREB}, clear thermals and check logs!!" | tee -a $"LOG"
   echo "Subject: To Many Autoreboots!!" > mail.txt
+  /usr/bin/tail -10 $"LOG" >> mail.txt
   sendmail -f ${FEMI} -s ${EMI} >> /home/ethos/mail.txt
   # Disabling auto clear, ITS DANGEROUS!!
   #/opt/ethos/bin/clear-thermals
@@ -77,9 +77,9 @@ elif grep -q "gpu clock problem" /var/run/ethos/status.file; then
   echo $rebcount > /opt/ethos/etc/autorebooted.file
   /usr/bin/sudo /sbin/reboot
 
-# Reboots when there is no issue, disabled
+# Reboots when there is no issue, disabling for testing
 #elif [[ $(date +"%M") == "00" ]] || [ -t 1 ] ; then
- # echo "$LOC Disallowed, Not mining long enough or No internet or Upating $DT" | tee -a $"LOG"
+  #echo "$LOC Disallowed, Not mining long enough or No internet or Upating $DT" | tee -a $"LOG"
   #/usr/bin/sudo /sbin/reboot
   #((rebcount++))
   #echo $rebcount > /opt/ethos/etc/autorebooted.file
@@ -97,7 +97,7 @@ elif [[ $error == "possible miner stall: check miner log" ]]; then
   echo "CRAP! Looks to be a miner stall...check logs...rebooting!" | tee -a $"LOG"
   ((rebcount++))
   echo $rebcount > /opt/ethos/etc/autorebooted.file
-  /usr/bin/sudo /sbin/reboott
+  /usr/bin/sudo /sbin/reboot
 
 # Possibly accounting for daily reboots instead of just autoreboots by script, disabling
 #elif [[ $autoreboot =~ $NUMBR ]] && [[ $autoreboot -gt $rebcount ]] ; then
