@@ -1,8 +1,8 @@
 #!/bin/bash
 #
-# EthosGeeK Script v1.4.6
-# More to come!!
+# EthosGeeK Script v1.4.9
 #
+# wget ?? -O /home/ethos/rigcheck.sh
 # chmod u+x rigcheck.sh
 # Crontab -e
 # */10 * * * * sudo /home/ethos/rigcheck.sh
@@ -14,97 +14,125 @@ TESTING=false
 # autoreboot=5
 #
 # Establishing log file
-LOG=/home/ethos/rig.log
+LOG='/home/ethos/rig.log'
+TLOG='/tmp/rig.log'
 #
 # Change number on the next line to what you set autoreboots to in your
 # config file, the default is 5
 CONFREB=5
 #
-# Setting file location for error detection
-ERR=$(cat /var/run/ethos/status.file)
-#
 # Pulling miner location
 LOC=$(/opt/ethos/sbin/ethos-readconf loc)
 #
-# Setting AutoReboot file location
+# Ethos system file locations
 autoreboot=$(/opt/ethos/sbin/ethos-readconf autoreboot)
 rebcount=$(cat /opt/ethos/etc/autorebooted.file)
+CRASHED=$(cat /var/run/ethos/crashed_gpus.file)
+ERR=$(cat /var/run/ethos/status.file)
+ALLOW=$(cat /opt/ethos/etc/allow.file)
+#
+# System Info
+uptime=`sed 's/\..*//' /proc/uptime`
+minersec=`grep miner_secs: /var/run/ethos/stats.file | cut -d \: -f 2`
+updating=`cat /var/run/ethos/updating.file`
 #
 # Setting number variable
+logsize="100"
 NUMBR='[1-9]'
 #
-# Setting To and From email addresses
-EMI=jpgottech@gmail.com
-FEMI=tatiana@ethos.net
+# To and From email addresses
+EMI=email@domain.com
+FEMI=miner@ethos.net
 # To have mail working you will need to install sendmail
 # sudo apt install sendmail
 
-if [ "$EUID" != 0 ]; then
-  echo "Need to run script as root, if on Shell In A Box/SSH, use sudo $0" | tee -a $"LOG"
-  exit 0
+# Log checks and balances
+if [[ -e /home/ethos/rig.log && -e /tmp/rig.log ]]; then
+  echo "$(date) - Log file looks good! Cleaning up logs and moving on to rig checks..." | tee -a ${LOG}
+  function f.truncatelog(){
+	/usr/bin/sudo tail -n $logsize /tmp/rig.log > /home/ethos/rig.log
+	}
+
+else
+#if [[ -f /home/ethos/rig.log && -f /tmp/rig.log ]]; then
+  echo "$(date) - Creating logs and setting the file permissions" | tee -a ${LOG}
+ /usr/bin/sudo touch /home/ethos/rig.log
+ /usr/bin/sudo /bin/cp /home/ethos/rig.log /tmp/rig.log
+ /usr/bin/sudo /bin/chown ethos.ethos /home/ethos/rig.log /tmp/rig.log
+ /usr/bin/sudo /bin/chmod 777 /home/ethos/rig.log /tmp/rig.log
+   function f.truncatelog(){
+	/usr/bin/sudo tail -n $logsize /tmp/rig.log > /home/ethos/rig.log
+   }
 fi
+
+# System and script checks
+#if [ "$EUID" != 0 ]; then
+#  echo "$(date) - Need to run script as root, if on Shell In A Box/SSH, use sudo $0" | tee -a ${TLOG}
+#  exit 0
+#fi
 
 if [ ${TESTING} = true ]; then
-  echo "$(date) $0 TESTING mode set to ${TESTING}, set to false or auto-reboot/restart will not work!" | tee -a $"LOG"
+  echo "$(date) - $0 TESTING mode set to ${TESTING}, set to false or auto-reboot/restart will not work!" | tee -a ${TLOG}
   exit 0
 fi
 
-ALLOW=$(cat /opt/ethos/etc/allow.file)
-if [ ${ALLOW} != 1 ]; then
-  echo "$(date) Miner process not enabled, bye $0..." | tee -a $"LOG"
-  exit 0
-fi
+#ALLOW=$(cat /opt/ethos/etc/allow.file)
+#if [ ${ALLOW} != 1 ]; then
+#  echo "$(date) - Miner process not enabled, bye $0..." | tee -a ${TLOG}
+#  exit 0
+#fi
 
-REBC=$(cat /opt/ethos/etc/autorebooted.file)
-ACOUNT=$(cat /opt/ethos/etc/autorebooted.file)
-##if grep -q "too many autoreboots" /var/run/ethos/status.file
-if [ ${REBC} -ge "$CONFREB" ]; then
+# Now the good stuff, mine checks and balances
+
+#if grep -q "too many autoreboots" /var/run/ethos/status.file
+if [ ${rebcount} -ge ${CONFREB} ]; then
   #ACOUNT=$(cat /opt/ethos/etc/autorebooted.file)
-  echo "$(date) Current autoreboot count is ${ACOUNT}, config limit is ${CONFREB}, clear thermals and check logs!!" | tee -a $"LOG"
+  echo "$(date) Current autoreboot count is ${rebcount}, config limit is ${CONFREB}, clear thermals and check logs!!" | tee -a ${TLOG}
   echo "Subject: To Many Autoreboots!!" > mail.txt
-  /usr/bin/tail -10 $"LOG" >> mail.txt
+  /usr/bin/tail -10 ${TLOG} >> mail.txt
   sendmail -f ${FEMI} -s ${EMI} >> /home/ethos/mail.txt
   # Disabling auto clear, ITS DANGEROUS!!
   #/opt/ethos/bin/clear-thermals
+fi
 
-# change if to elif after uncommenting statement above
-CRASHED=$(cat /var/run/ethos/crashed_gpus.file)
-elif grep -q "gpu clock problem" /var/run/ethos/status.file; then
+if grep -q "gpu clock problem" /var/run/ethos/status.file; then
   #CRASHED=$(cat /var/run/ethos/crashed_gpus.file)
-  echo "$(date) GPU clock problem detected on GPU(s) ${CRASHED}, rebooting..." | tee -a $"LOG"
+  echo "$(date) - GPU clock problem detected on GPU(s) ${CRASHED}, rebooting..." | tee -a ${TLOG}
   #rm -f /var/run/ethos/crashed_gpus.file
   ((rebcount++))
   echo $rebcount > /opt/ethos/etc/autorebooted.file
   /usr/bin/sudo /sbin/reboot
+fi
 
-# Reboots when there is no issue, disabling for testing
-#elif [[ $(date +"%M") == "00" ]] || [ -t 1 ] ; then
-  #echo "$LOC Disallowed, Not mining long enough or No internet or Upating $DT" | tee -a $"LOG"
-  #/usr/bin/sudo /sbin/reboot
-  #((rebcount++))
-  #echo $rebcount > /opt/ethos/etc/autorebooted.file
-  #/usr/bin/sudo /sbin/reboot
-
-elif [[ $error == "gpu crashed: reboot required" ]]; then
-#|| [[ $error == "possible miner stall: check miner log" ]] ; then
-  echo "CRAP! Looks to be a miner stall or GPU crash...check logs to confirm...rebooting!" | tee -a $"LOG"
-  #/usr/bin/sudo /sbin/reboot
+#if [[ $uptime -lt "600" ]] \
+#     || [[ $minersec -lt "300" ]] \
+if     [[ $updating -eq "1" ]] \
+       || [[ $ALLOW -eq "0" ]]; then
+if [[ `date +"%M"` == "00" ]] || [ -t 1 ] ; then
+  echo "$LOC $(date) - has mining disabled or its not mining long enough or no internet or upating $DT...check logs" | tee -a ${TLOG}
+#  echo "$(date) - Upime is: $uptime" | tee -a ${TLOG}
+#  echo "$(date) - Miner Mining Time: $minersec" | tee -a ${TLOG}
+  echo "$(date) - Miner update status: $updating" | tee -a ${TLOG}
+  echo "$(date) - Miner enabled setting(should be 0, 1 is disabled): $ALLOW" | tee -a ${TLOG}
   ((rebcount++))
   echo $rebcount > /opt/ethos/etc/autorebooted.file
   /usr/bin/sudo /sbin/reboot
+fi
+  fi
 
-elif [[ $error == "possible miner stall: check miner log" ]]; then
-  echo "CRAP! Looks to be a miner stall...check logs...rebooting!" | tee -a $"LOG"
+if [[ $error == "gpu crashed: reboot required" ]]; then
+  echo "$(date) - CRAP! Looks to be a miner stall or GPU crash...check logs to confirm...rebooting!" | tee -a ${TLOG}
   ((rebcount++))
   echo $rebcount > /opt/ethos/etc/autorebooted.file
   /usr/bin/sudo /sbin/reboot
+fi
 
-# Possibly accounting for daily reboots instead of just autoreboots by script, disabling
-#elif [[ $autoreboot =~ $NUMBR ]] && [[ $autoreboot -gt $rebcount ]] ; then
-  #((rebcount++))
-  #echo $rebcount > /opt/ethos/etc/autorebooted.file
-  #/usr/bin/sudo /opt/ethos/bin/clear-thermals
+if [[ $error == "possible miner stall: check miner log" ]]; then
+  echo "$(date) - CRAP! Looks to be a miner stall...check logs...rebooting!" | tee -a ${TLOG}
+  ((rebcount++))
+  echo $rebcount > /opt/ethos/etc/autorebooted.file
+  /usr/bin/sudo /sbin/reboot
 
 else
-  echo "Looking good, no work to be done, bye..."
+  echo "$(date) - Looking good, no work to be done, bye..." | tee -a ${TLOG}
 fi
