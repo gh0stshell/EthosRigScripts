@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# EthosGeeK Script v1.4.9
+# EthosGeeK Script v1.5.0
 #
 # wget ?? -O /home/ethos/rigcheck.sh
 # chmod u+x rigcheck.sh
@@ -41,8 +41,8 @@ logsize="100"
 NUMBR='[1-9]'
 #
 # To and From email addresses
-EMI=email@domain.com
-FEMI=miner@ethos.net
+EMI=email@mail.com
+FEMI=miner_name@ethos.net
 # To have mail working you will need to install sendmail
 # sudo apt install sendmail
 
@@ -104,21 +104,22 @@ if grep -q "gpu clock problem" /var/run/ethos/status.file; then
   /usr/bin/sudo /sbin/reboot
 fi
 
-#if [[ $uptime -lt "600" ]] \
-#     || [[ $minersec -lt "300" ]] \
-if     [[ $updating -eq "1" ]] \
-       || [[ $ALLOW -eq "0" ]]; then
-if [[ `date +"%M"` == "00" ]] || [ -t 1 ] ; then
-  echo "$LOC $(date) - has mining disabled or its not mining long enough or no internet or upating $DT...check logs" | tee -a ${TLOG}
-#  echo "$(date) - Upime is: $uptime" | tee -a ${TLOG}
-#  echo "$(date) - Miner Mining Time: $minersec" | tee -a ${TLOG}
-  echo "$(date) - Miner update status: $updating" | tee -a ${TLOG}
+# Causing issues with dual reboots after daily reboot or update, disabling reboot code since there may be no issue
+if   [[ $uptime -lt "100" ]] \
+     || [[ $minersec -lt "100" ]] \
+     || [[ $updating -eq "1" ]] \
+     || [[ $ALLOW -eq "0" ]]; then
+#if [[ `date +"%M"` == "00" ]] || [ -t 1 ] ; then
+  #echo "$LOC $(date) - has mining disabled or its not mining long enough or no internet or upating $DT...check logs" | tee -a ${TLOG}
+  echo "$(date) - Upime is: $uptime...check value is set to 100" | tee -a ${TLOG}
+  echo "$(date) - Miner Mining Time: $minersec..check value is set to 100" | tee -a ${TLOG}
+  echo "$(date) - Miner update status: $updating..check value is set to 1=updating" | tee -a ${TLOG}
   echo "$(date) - Miner enabled setting(should be 0, 1 is disabled): $ALLOW" | tee -a ${TLOG}
-  ((rebcount++))
-  echo $rebcount > /opt/ethos/etc/autorebooted.file
-  /usr/bin/sudo /sbin/reboot
+  #((rebcount++))
+  #echo $rebcount > /opt/ethos/etc/autorebooted.file
+  #/usr/bin/sudo /sbin/reboot
 fi
-  fi
+#  fi
 
 if [[ $error == "gpu crashed: reboot required" ]]; then
   echo "$(date) - CRAP! Looks to be a miner stall or GPU crash...check logs to confirm...rebooting!" | tee -a ${TLOG}
