@@ -41,8 +41,8 @@ logsize="100"
 NUMBR='[1-9]'
 #
 # To and From email addresses
-EMI=email@mail.com
-FEMI=miner_name@ethos.net
+EMI=jpgottech@gmail.com
+FEMI=tatiana@ethos.net
 # To have mail working you will need to install sendmail
 # sudo apt install sendmail
 
@@ -114,7 +114,7 @@ if   [[ $uptime -lt "100" ]] \
   echo "$(date) - Upime is: $uptime...check value is set to 100" | tee -a ${TLOG}
   echo "$(date) - Miner Mining Time: $minersec..check value is set to 100" | tee -a ${TLOG}
   echo "$(date) - Miner update status: $updating..check value is set to 1=updating" | tee -a ${TLOG}
-  echo "$(date) - Miner enabled setting(should be 0, 1 is disabled): $ALLOW" | tee -a ${TLOG}
+  echo "$(date) - Miner enabled setting(should be 1, 0 is disabled): $ALLOW" | tee -a ${TLOG}
   #((rebcount++))
   #echo $rebcount > /opt/ethos/etc/autorebooted.file
   #/usr/bin/sudo /sbin/reboot
