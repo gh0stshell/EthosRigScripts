@@ -47,8 +47,8 @@ function f.truncatelog(){
   /usr/bin/sudo tail -n $logsize /tmp/rig.log > /home/ethos/rig.log
 }
 # To and From email addresses
-EMI=jpgottech@gmail.com
-FEMI=tatiana_monero@ethos.net
+EMI=email@domain.com
+FEMI=miner_coin@ethos.net
 # To have mail working you will need to install sendmail
 # $ sudo apt install sendmail
 #
