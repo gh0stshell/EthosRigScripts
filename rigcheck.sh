@@ -35,13 +35,14 @@ updating=`cat /var/run/ethos/updating.file`
 load=$(cat /proc/loadavg | awk '{ print $1 }')
 uptime=`sed 's/\..*//' /proc/uptime`
 temps=$(grep ^temp: /var/run/ethos/stats.file | cut -d : -f 2 | sed 's/\...//g')
-mems=$(grep ^memstates: /var/run/ethos/stats.file | cut -d : -f 2)"
-hashes=$(tail -1 /var/run/ethos/miner_hashes.file)"
+mems=$(grep ^memstates: /var/run/ethos/stats.file | cut -d : -f 2)
+hashes=$(tail -1 /var/run/ethos/miner_hashes.file)
 #
 # Setting number variable
 logsize="50"
 NUMBR='[1-9]'
 crashspeed="0"
+memcrash="0"
 #
 # Logging function
 function f.truncatelog(){
@@ -49,8 +50,8 @@ function f.truncatelog(){
 }
 #
 # To(EMI) and From(FEMI) email addresses
-EMI=email@domain.com
-FEMI=miner_coin@ethos.net
+EMI=jpgottech@gmail.com
+FEMI=tatiana_monero@ethos.net
 #
 # To have mail working you will need to install sendmail
 # $ sudo apt install sendmail
@@ -104,9 +105,6 @@ if [[ $load == "5.0" && $load > "5.0" ]]; then
   sendmail -f ${FEMI} -s ${EMI} >> /home/ethos/loadmail.txt
 fi
 
-# Settings GPU variable for hash check
-for gpu in ${!hashrates[*]} ; do
-
 # Miner checks with just logging
 if   [[ $uptime -lt "120" ]] \
      || [[ $updating == "1" ]] \
@@ -119,12 +117,12 @@ if   [[ $uptime -lt "120" ]] \
   #echo $rebcount > /opt/ethos/etc/autorebooted.file
   #/usr/bin/sudo /sbin/reboot
 
-elif [[ $(bc <<< "${hashes[gpu]} <= $crashspeed") -eq "1" ]] ; then
-  echo "$(date) $LOC - Hashrate check shows GPU(s) have crashed Status: "${hashes[*]}" "${mems[*]}"" | tee -a ${TLOG}
-  f.truncatelog
-  ((rebcount++))
-  echo $rebcount > /opt/ethos/etc/autorebooted.file
-  /usr/bin/sudo /sbin/reboot
+#elif [[ $(bc <<< "${hashes} <= $crashspeed") -eq "1" ]] ; then
+#  echo "$(date) $LOC - Hashrate check shows GPU(s) have crashed Status: "${hashes[*]}" "${mems[*]}"" | tee -a ${TLOG}
+#  f.truncatelog
+#  ((rebcount++))
+#  echo $rebcount > /opt/ethos/etc/autorebooted.file
+#  /usr/bin/sudo /sbin/reboot
 
 elif grep -q "miner started: miner commanded to start" /var/run/ethos/status.file; then
   sleep 300
@@ -137,7 +135,7 @@ elif grep -q "miner active" /var/run/ethos/status.file && [ $minersec -lt "60" ]
   #/opt/ethos/bin/minestop
   f.truncatelog
 
-elif [ $mems == "0" ]; then
+elif [[ $mems = $memcrash ]]; then
   echo "Memstates show GPU(s) have crashed and/or not mining for a while Status: $mems" | tee -a ${TLOG}
   f.truncatelog
   #((rebcount++))
@@ -181,6 +179,6 @@ elif [[ $throttled -eq "1" ]]; then
 
 else
   echo "$(date) - Looking good, no work to be done, miner doing its thing..." | tee -a ${TLOG}
-  echo "$(date) - $mems $hashes $temps" | tee -a ${TLOG}
+  echo "$(date) - "${mems[*]}" "${hashes[*]}" "${temps[*]}"" | tee -a ${TLOG}
   f.truncatelog
 fi
