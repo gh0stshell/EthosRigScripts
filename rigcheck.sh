@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# EthosGeeK Script v1.5.4
+# EthosGeeK Script v1.5.5
 #
 # wget -4 https://github.com/gh0stshell/EthosRigScripts/raw/master/rigcheck.sh -O /home/ethos/rigcheck.sh
 # chmod u+x rigcheck.sh
@@ -34,21 +34,24 @@ minersec=`grep miner_secs: /var/run/ethos/stats.file | cut -d \: -f 2`
 updating=`cat /var/run/ethos/updating.file`
 load=$(cat /proc/loadavg | awk '{ print $1 }')
 uptime=`sed 's/\..*//' /proc/uptime`
-read -r -a temps <<< "$(grep ^temp: /var/run/ethos/stats.file | cut -d : -f 2 | sed 's/\...//g')"
-read -r -a memstates <<< "$(grep ^memstates: /var/run/ethos/stats.file | cut -d : -f 2)"
-read -r -a hashrates <<< "$(tail -1 /var/run/ethos/miner_hashes.file)"
+temps=$(grep ^temp: /var/run/ethos/stats.file | cut -d : -f 2 | sed 's/\...//g')
+mems=$(grep ^memstates: /var/run/ethos/stats.file | cut -d : -f 2)"
+hashes=$(tail -1 /var/run/ethos/miner_hashes.file)"
 #
 # Setting number variable
 logsize="50"
 NUMBR='[1-9]'
+crashspeed="0"
 #
-# Log truncate function
+# Logging function
 function f.truncatelog(){
   /usr/bin/sudo tail -n $logsize /tmp/rig.log > /home/ethos/rig.log
 }
-# To and From email addresses
+#
+# To(EMI) and From(FEMI) email addresses
 EMI=email@domain.com
 FEMI=miner_coin@ethos.net
+#
 # To have mail working you will need to install sendmail
 # $ sudo apt install sendmail
 #
@@ -94,18 +97,20 @@ if [ ${rebcount} -ge ${CONFREB} ]; then
 fi
 
 if [[ $load == "5.0" && $load > "5.0" ]]; then
-  echo "$(date) $LOC Load is high, login and check miner via top, could be bad wiring, bad riser, or OC settings" | tee -a ${TLOG}
+  echo "$(date) $LOC Load is high $load, login and check miner via top, could be bad wiring, bad riser, or OC settings" | tee -a ${TLOG}
   f.truncatelog
   echo "Subject: Miner Load Too High!" > loadmail.txt
   /usr/bin/tail -10 ${TLOG} >> loadmail.txt
   sendmail -f ${FEMI} -s ${EMI} >> /home/ethos/loadmail.txt
 fi
 
+# Settings GPU variable for hash check
+for gpu in ${!hashrates[*]} ; do
+
 # Miner checks with just logging
 if   [[ $uptime -lt "120" ]] \
      || [[ $updating == "1" ]] \
      || [[ $ALLOW == "0" ]]; then
-  #echo "$(date) $LOC - mining disabled or upating $DT...check logs" | tee -a ${TLOG}
   echo "$(date) $LOC - Uptime is not long enough for check, current uptime is: $uptime" | tee -a ${TLOG}
   echo "$(date) $LOC - Miner is updating, update status is: $updating...1=updating" | tee -a ${TLOG}
   echo "$(date) $LOC - Miner enabled setting is $ALLOW (should be 1, 0 is disabled)" | tee -a ${TLOG}
@@ -113,6 +118,13 @@ if   [[ $uptime -lt "120" ]] \
   #((rebcount++))
   #echo $rebcount > /opt/ethos/etc/autorebooted.file
   #/usr/bin/sudo /sbin/reboot
+
+elif [[ $(bc <<< "${hashes[gpu]} <= $crashspeed") -eq "1" ]] ; then
+  echo "$(date) $LOC - Hashrate check shows GPU(s) have crashed Status: "${hashes[*]}" "${mems[*]}"" | tee -a ${TLOG}
+  f.truncatelog
+  ((rebcount++))
+  echo $rebcount > /opt/ethos/etc/autorebooted.file
+  /usr/bin/sudo /sbin/reboot
 
 elif grep -q "miner started: miner commanded to start" /var/run/ethos/status.file; then
   sleep 300
@@ -125,22 +137,29 @@ elif grep -q "miner active" /var/run/ethos/status.file && [ $minersec -lt "60" ]
   #/opt/ethos/bin/minestop
   f.truncatelog
 
+elif [ $mems == "0" ]; then
+  echo "Memstates show GPU(s) have crashed and/or not mining for a while Status: $mems" | tee -a ${TLOG}
+  f.truncatelog
+  #((rebcount++))
+  #echo $rebcount > /opt/ethos/etc/autorebooted.file
+  /opt/ethos/bin/minestop
+
 elif grep -q "gpu clock problem" /var/run/ethos/status.file; then
-  echo "$(date) - $LOC has a GPU clock problem detected on GPU(s) ${CRASHED}, rebooting..." | tee -a ${TLOG}
+  echo "$(date) - $LOC has a GPU clock problem detected on GPU(s) ${CRASHED} $mems $hashes" | tee -a ${TLOG}
   f.truncatelog
   ((rebcount++))
   echo $rebcount > /opt/ethos/etc/autorebooted.file
   /usr/bin/sudo /sbin/reboot
 
 elif [[ $error == "gpu crashed: reboot required" ]]; then
-  echo "$(date) - CRAP! Looks to be a miner stall or GPU crash...check logs to confirm...rebooting!" | tee -a ${TLOG}
+  echo "$(date) - CRAP! Looks to be a miner stall or GPU crash Status: $mems $hashes $error" | tee -a ${TLOG}
   f.truncatelog
   ((rebcount++))
   echo $rebcount > /opt/ethos/etc/autorebooted.file
   /usr/bin/sudo /sbin/reboot
 
 elif [[ $error == "possible miner stall: check miner log" ]]; then
-  echo "$(date) - CRAP! Looks to be a miner stall...check logs...rebooting!" | tee -a ${TLOG}
+  echo "$(date) - CRAP! Looks to be a miner stall Status: $mems $hashes $error" | tee -a ${TLOG}
   f.truncatelog
   ((rebcount++))
   echo $rebcount > /opt/ethos/etc/autorebooted.file
@@ -154,7 +173,7 @@ elif [[ $error = "hardware error: possible gpu/riser/power failure" ]]; then
   /usr/bin/sudo /sbin/reboot
 
 elif [[ $throttled -eq "1" ]]; then
-  echo "$(date) $loc has a GPU that overheated - http://ethosdistro.com/kb/#managing-temperature" | tee -a ${TLOG}
+  echo "$(date) $LOC has a GPU that overheated $mems $temps - http://ethosdistro.com/kb/#managing-temperature" | tee -a ${TLOG}
   f.truncatelog
   ((rebcount++))
   echo $rebcount > /opt/ethos/etc/autorebooted.file
@@ -162,5 +181,6 @@ elif [[ $throttled -eq "1" ]]; then
 
 else
   echo "$(date) - Looking good, no work to be done, miner doing its thing..." | tee -a ${TLOG}
+  echo "$(date) - $mems $hashes $temps" | tee -a ${TLOG}
   f.truncatelog
 fi
