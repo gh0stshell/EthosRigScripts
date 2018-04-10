@@ -19,8 +19,8 @@ LOG='/home/ethos/rig.log'
 TLOG='/tmp/rig.log'
 #
 # Change number on the next line to what you set autoreboots to in your
-# config file, the default is 5
-CONFREB=5
+# config file, add 1 to the number listed in your config
+CONFREB=6
 #
 # Pulling ethos system info
 LOC=$(/opt/ethos/sbin/ethos-readconf loc)
@@ -43,19 +43,19 @@ logsize="50"
 NUMBR='[1-9]'
 #
 # To and From email addresses
-EMI=name@domain.com
-FEMI=miner_name@ethos.net
+EMI=jpgottech@gmail.com
+FEMI=tatiana_monero@ethos.net
 # To have mail working you will need to install sendmail
 # $ sudo apt install sendmail
 #
 # Log checks and balances
 if [[ -e /home/ethos/rig.log && -e /tmp/rig.log ]]; then
-  echo "$(date) - Log file looks good! Cleaning up logs and moving on to rig checks..." | tee -a ${LOG}
+  echo "$(date) - Log file looks good! Cleaning up logs and moving on to rig checks..." | tee -a ${TLOG}
   function f.truncatelog(){
 	/usr/bin/sudo tail -n $logsize /tmp/rig.log > /home/ethos/rig.log
 	}
 else
-  echo "$(date) - Creating logs and setting the file permissions" | tee -a ${LOG}
+  echo "$(date) - Creating logs and setting log file permissions" | tee -a ${TLOG}
  /usr/bin/sudo touch /home/ethos/rig.log
  /usr/bin/sudo /bin/cp /home/ethos/rig.log /tmp/rig.log
  /usr/bin/sudo /bin/chown ethos.ethos /home/ethos/rig.log /tmp/rig.log
@@ -74,8 +74,7 @@ fi
 # Miner health check with email option
 #if grep -q "too many autoreboots" /var/run/ethos/status.file
 if [ ${rebcount} -ge ${CONFREB} ]; then
-  #ACOUNT=$(cat /opt/ethos/etc/autorebooted.file)
-  echo "$(date) Current autoreboot count is ${rebcount}, config limit is ${CONFREB}, clear thermals and check logs!!" | tee -a ${TLOG}
+  echo "$(date) Current autoreboot count is ${rebcount}, clear thermals and check logs!!" | tee -a ${TLOG}
   echo "Subject: To Many Autoreboots!!" > mail.txt
   /usr/bin/tail -10 ${TLOG} >> mail.txt
   sendmail -f ${FEMI} -s ${EMI} >> /home/ethos/mail.txt
@@ -83,41 +82,37 @@ if [ ${rebcount} -ge ${CONFREB} ]; then
   #/opt/ethos/bin/clear-thermals
 fi
 
-if [[ $load == "1.6" && $load > "1.6" ]]; then
-  echo "$(date) $LOC Load is high, login and check miner via top, could be bad wiring or riser" | tee -a ${TLOG}
-  echo "Subject: Miner Load High!" > loadmail.txt
+if [[ $load == "5.0" && $load > "5.0" ]]; then
+  echo "$(date) $LOC Load is high, login and check miner via top, could be bad wiring, bad riser, or OC settings" | tee -a ${TLOG}
+  echo "Subject: Miner Load Too High!" > loadmail.txt
   /usr/bin/tail -10 ${TLOG} >> loadmail.txt
   sendmail -f ${FEMI} -s ${EMI} >> /home/ethos/loadmail.txt
 fi
 
 # Miner checks with just logging
-if   [[ $uptime -lt "100" ]] \
-     || [[ $updating -eq "1" ]] \
-     || [[ $ALLOW -eq "0" ]]; then
-  echo "$LOC $(date) - mining disabled or upating $DT...check logs" | tee -a ${TLOG}
-  echo "$(date) - Upime is: $uptime...check value is set to 100" | tee -a ${TLOG}
-  #echo "$(date) - Miner Mining Time: $minersec..check value is set to 100" | tee -a ${TLOG}
-  echo "$(date) - Miner update status: $updating..checking value it is set to 1=updating" | tee -a ${TLOG}
-  echo "$(date) - Miner enabled setting(should be 1, 0 is disabled): $ALLOW" | tee -a ${TLOG}
+if   [[ $uptime -lt "120" ]] \
+     || [[ $updating == "1" ]] \
+     || [[ $ALLOW == "0" ]]; then
+  #echo "$(date) $LOC - mining disabled or upating $DT...check logs" | tee -a ${TLOG}
+  echo "$(date) $LOC - Uptime is not long enough for check, current uptime is: $uptime" | tee -a ${TLOG}
+  echo "$(date) $LOC - Miner is updating, update status is: $updating...1=updating" | tee -a ${TLOG}
+  echo "$(date) $LOC - Miner enabled setting is $ALLOW (should be 1, 0 is disabled)" | tee -a ${TLOG}
   #((rebcount++))
   #echo $rebcount > /opt/ethos/etc/autorebooted.file
   #/usr/bin/sudo /sbin/reboot
-#fi
 
-elif grep -q "miner started" /var/run/ethos/status.file; then
+elif grep -q "miner started: miner commanded to start" /var/run/ethos/status.file; then
   sleep 300
 
-#elif [ $minersec -lt "120" ]; then
-elif [[ $error == "miner active" && $minersec -lt "120" ]]; then
-#elif grep -q "miner active" /var/run/ethos/status.file && $minersec -lt "120"; then
-  echo "$(date) - Miner Mining Time: $minersec..check value is set to 120" | tee -a ${TLOG}
+elif grep -q "miner active" /var/run/ethos/status.file && [ $minersec -lt "60" ]; then
+  echo "$(date) - Miner mining time is too low, current mining time is: $minersec" | tee -a ${TLOG}
   #((rebcount++))
   #echo $rebcount > /opt/ethos/etc/autorebooted.file
   #/opt/ethos/bin/minestart
   #/opt/ethos/bin/minestop
 
 elif grep -q "gpu clock problem" /var/run/ethos/status.file; then
-  echo "$(date) - GPU clock problem detected on GPU(s) ${CRASHED}, rebooting..." | tee -a ${TLOG}
+  echo "$(date) - $LOC has a GPU clock problem detected on GPU(s) ${CRASHED}, rebooting..." | tee -a ${TLOG}
   ((rebcount++))
   echo $rebcount > /opt/ethos/etc/autorebooted.file
   /usr/bin/sudo /sbin/reboot
@@ -135,17 +130,17 @@ elif [[ $error == "possible miner stall: check miner log" ]]; then
   /usr/bin/sudo /sbin/reboot
 
 elif [[ $error = "hardware error: possible gpu/riser/power failure" ]]; then
-  echo "$error - http://ethosdistro.com/kb/#adl $DT" | tee -a ${TLOG}
+  echo "$(date) $error - http://ethosdistro.com/kb/#adl" | tee -a ${TLOG}
   ((rebcount++))
   echo $rebcount > /opt/ethos/etc/autorebooted.file
   /usr/bin/sudo /sbin/reboot
 
 elif [[ $throttled -eq "1" ]]; then
-  echo "$loc has a GPU that overheated - http://ethosdistro.com/kb/#managing-temperature $DT" | tee -a ${TLOG}
+  echo "$(date) $loc has a GPU that overheated - http://ethosdistro.com/kb/#managing-temperature" | tee -a ${TLOG}
   ((rebcount++))
   echo $rebcount > /opt/ethos/etc/autorebooted.file
   /usr/bin/sudo /sbin/reboot
 
 else
-  echo "$(date) - Looking good, no work to be done, bye..." | tee -a ${TLOG}
+  echo "$(date) - Looking good, no work to be done, miner doing its thing..." | tee -a ${TLOG}
 fi
