@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# EthosGeeK Script v1.5.3
+# EthosGeeK Script v1.5.4
 #
 # wget -4 https://github.com/gh0stshell/EthosRigScripts/raw/master/rigcheck.sh -O /home/ethos/rigcheck.sh
 # chmod u+x rigcheck.sh
@@ -42,6 +42,10 @@ read -r -a hashrates <<< "$(tail -1 /var/run/ethos/miner_hashes.file)"
 logsize="50"
 NUMBR='[1-9]'
 #
+# Log truncate function
+function f.truncatelog(){
+  /usr/bin/sudo tail -n $logsize /tmp/rig.log > /home/ethos/rig.log
+}
 # To and From email addresses
 EMI=jpgottech@gmail.com
 FEMI=tatiana_monero@ethos.net
@@ -51,23 +55,26 @@ FEMI=tatiana_monero@ethos.net
 # Log checks and balances
 if [[ -e /home/ethos/rig.log && -e /tmp/rig.log ]]; then
   echo "$(date) - Log file looks good! Cleaning up logs and moving on to rig checks..." | tee -a ${TLOG}
-  function f.truncatelog(){
-	/usr/bin/sudo tail -n $logsize /tmp/rig.log > /home/ethos/rig.log
-	}
+  f.truncatelog
+  #function f.truncatelog(){
+	#/usr/bin/sudo tail -n $logsize /tmp/rig.log > /home/ethos/rig.log
+	#}
 else
   echo "$(date) - Creating logs and setting log file permissions" | tee -a ${TLOG}
  /usr/bin/sudo touch /home/ethos/rig.log
  /usr/bin/sudo /bin/cp /home/ethos/rig.log /tmp/rig.log
  /usr/bin/sudo /bin/chown ethos.ethos /home/ethos/rig.log /tmp/rig.log
  /usr/bin/sudo /bin/chmod 777 /home/ethos/rig.log /tmp/rig.log
-   function f.truncatelog(){
-	/usr/bin/sudo tail -n $logsize /tmp/rig.log > /home/ethos/rig.log
-   }
+  f.truncatelog
+  #function f.truncatelog(){
+	#/usr/bin/sudo tail -n $logsize /tmp/rig.log > /home/ethos/rig.log
+   #}
 fi
 
 # Testing if script is in testing mode
 if [ ${TESTING} = true ]; then
   echo "$(date) - $0 TESTING mode set to ${TESTING}, set to false or auto-reboot/restart will not work!" | tee -a ${TLOG}
+  f.truncatelog
   exit 0
 fi
 
@@ -75,6 +82,10 @@ fi
 #if grep -q "too many autoreboots" /var/run/ethos/status.file
 if [ ${rebcount} -ge ${CONFREB} ]; then
   echo "$(date) Current autoreboot count is ${rebcount}, clear thermals and check logs!!" | tee -a ${TLOG}
+  f.truncatelog
+  #function f.truncatelog(){
+    #/usr/bin/sudo tail -n $logsize /tmp/rig.log > /home/ethos/rig.log
+   #}
   echo "Subject: To Many Autoreboots!!" > mail.txt
   /usr/bin/tail -10 ${TLOG} >> mail.txt
   sendmail -f ${FEMI} -s ${EMI} >> /home/ethos/mail.txt
@@ -84,6 +95,7 @@ fi
 
 if [[ $load == "5.0" && $load > "5.0" ]]; then
   echo "$(date) $LOC Load is high, login and check miner via top, could be bad wiring, bad riser, or OC settings" | tee -a ${TLOG}
+  f.truncatelog
   echo "Subject: Miner Load Too High!" > loadmail.txt
   /usr/bin/tail -10 ${TLOG} >> loadmail.txt
   sendmail -f ${FEMI} -s ${EMI} >> /home/ethos/loadmail.txt
@@ -97,6 +109,7 @@ if   [[ $uptime -lt "120" ]] \
   echo "$(date) $LOC - Uptime is not long enough for check, current uptime is: $uptime" | tee -a ${TLOG}
   echo "$(date) $LOC - Miner is updating, update status is: $updating...1=updating" | tee -a ${TLOG}
   echo "$(date) $LOC - Miner enabled setting is $ALLOW (should be 1, 0 is disabled)" | tee -a ${TLOG}
+  f.truncatelog
   #((rebcount++))
   #echo $rebcount > /opt/ethos/etc/autorebooted.file
   #/usr/bin/sudo /sbin/reboot
@@ -110,37 +123,44 @@ elif grep -q "miner active" /var/run/ethos/status.file && [ $minersec -lt "60" ]
   #echo $rebcount > /opt/ethos/etc/autorebooted.file
   #/opt/ethos/bin/minestart
   #/opt/ethos/bin/minestop
+  f.truncatelog
 
 elif grep -q "gpu clock problem" /var/run/ethos/status.file; then
   echo "$(date) - $LOC has a GPU clock problem detected on GPU(s) ${CRASHED}, rebooting..." | tee -a ${TLOG}
+  f.truncatelog
   ((rebcount++))
   echo $rebcount > /opt/ethos/etc/autorebooted.file
   /usr/bin/sudo /sbin/reboot
 
 elif [[ $error == "gpu crashed: reboot required" ]]; then
   echo "$(date) - CRAP! Looks to be a miner stall or GPU crash...check logs to confirm...rebooting!" | tee -a ${TLOG}
+  f.truncatelog
   ((rebcount++))
   echo $rebcount > /opt/ethos/etc/autorebooted.file
   /usr/bin/sudo /sbin/reboot
 
 elif [[ $error == "possible miner stall: check miner log" ]]; then
   echo "$(date) - CRAP! Looks to be a miner stall...check logs...rebooting!" | tee -a ${TLOG}
+  f.truncatelog
   ((rebcount++))
   echo $rebcount > /opt/ethos/etc/autorebooted.file
   /usr/bin/sudo /sbin/reboot
 
 elif [[ $error = "hardware error: possible gpu/riser/power failure" ]]; then
   echo "$(date) $error - http://ethosdistro.com/kb/#adl" | tee -a ${TLOG}
+  f.truncatelog
   ((rebcount++))
   echo $rebcount > /opt/ethos/etc/autorebooted.file
   /usr/bin/sudo /sbin/reboot
 
 elif [[ $throttled -eq "1" ]]; then
   echo "$(date) $loc has a GPU that overheated - http://ethosdistro.com/kb/#managing-temperature" | tee -a ${TLOG}
+  f.truncatelog
   ((rebcount++))
   echo $rebcount > /opt/ethos/etc/autorebooted.file
   /usr/bin/sudo /sbin/reboot
 
 else
   echo "$(date) - Looking good, no work to be done, miner doing its thing..." | tee -a ${TLOG}
+  f.truncatelog
 fi
