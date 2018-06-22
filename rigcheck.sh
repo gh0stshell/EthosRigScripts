@@ -50,8 +50,8 @@ function f.truncatelog(){
 }
 #
 # To(EMI) and From(FEMI) email addresses
-EMI=jpgottech@gmail.com
-FEMI=tatiana_monero@ethos.net
+EMI=your@email.com
+FEMI=miner_coin@ethos.net
 #
 # To have mail working you will need to install sendmail
 # $ sudo apt install sendmail
@@ -64,7 +64,7 @@ if [[ -e /home/ethos/rig.log && -e /tmp/rig.log ]]; then
 	#/usr/bin/sudo tail -n $logsize /tmp/rig.log > /home/ethos/rig.log
 	#}
 else
-  echo "$(date) - Creating logs and setting log file permissions" | tee -a ${TLOG}
+  echo "$(date) - No logs! Creating logs and setting file permissions" | tee -a ${TLOG}
  /usr/bin/sudo touch /home/ethos/rig.log
  /usr/bin/sudo /bin/cp /home/ethos/rig.log /tmp/rig.log
  /usr/bin/sudo /bin/chown ethos.ethos /home/ethos/rig.log /tmp/rig.log
