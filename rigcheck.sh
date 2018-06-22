@@ -18,9 +18,6 @@ TESTING=false
 LOG='/home/ethos/rig.log'
 TLOG='/tmp/rig.log'
 #
-# Change number on the next line to what you set autoreboots to in your
-# config file, add 1 to the number listed in your config
-CONFREB=6
 #
 # Pulling ethos system info
 LOC=$(/opt/ethos/sbin/ethos-readconf loc)
@@ -84,7 +81,7 @@ fi
 
 # Miner health check with email option
 #if grep -q "too many autoreboots" /var/run/ethos/status.file
-if [ ${rebcount} -ge ${CONFREB} ]; then
+if [ ${rebcount} -ge ${autoreboot} ]; then
   echo "$(date) Current autoreboot count is ${rebcount}, clear thermals and check logs!!" | tee -a ${TLOG}
   f.truncatelog
   #function f.truncatelog(){
