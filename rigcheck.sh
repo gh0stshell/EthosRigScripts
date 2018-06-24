@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# EthosGeeK Script v1.5.5
+# EthosGeeK Script v1.5.6
 #
 # wget -4 https://github.com/gh0stshell/EthosRigScripts/raw/master/rigcheck.sh -O /home/ethos/rigcheck.sh
 # chmod u+x rigcheck.sh
@@ -177,5 +177,6 @@ elif [[ $throttled -eq "1" ]]; then
 else
   echo "$(date) - Looking good, no work to be done, miner doing its thing..." | tee -a ${TLOG}
   echo "$(date) - "${mems[*]}" "${hashes[*]}" "${temps[*]}"" | tee -a ${TLOG}
+  echo "$(date) - Current Autoreboot Count is $autoreboot" | tee -a {$TLOG}
   f.truncatelog
 fi
