@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# EthosGeeK Script v1.5.6
+# EthosGeeK Script v1.5.7
 #
 # wget -4 https://github.com/gh0stshell/EthosRigScripts/raw/master/rigcheck.sh -O /home/ethos/rigcheck.sh
 # chmod u+x rigcheck.sh
@@ -154,6 +154,13 @@ elif [[ $error == "gpu crashed: reboot required" ]]; then
   /usr/bin/sudo /sbin/reboot
 
 elif [[ $error == "possible miner stall: check miner log" ]]; then
+  echo "$(date) - CRAP! Looks to be a miner stall Status: $mems $hashes $error" | tee -a ${TLOG}
+  f.truncatelog
+  ((rebcount++))
+  echo $rebcount > /opt/ethos/etc/autorebooted.file
+  /usr/bin/sudo /sbin/reboot
+  
+  elif [[ $error == "possible miner stall" ]]; then
   echo "$(date) - CRAP! Looks to be a miner stall Status: $mems $hashes $error" | tee -a ${TLOG}
   f.truncatelog
   ((rebcount++))
