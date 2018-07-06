@@ -160,7 +160,7 @@ elif [[ $error == "possible miner stall: check miner log" ]]; then
   echo $rebcount > /opt/ethos/etc/autorebooted.file
   /usr/bin/sudo /sbin/reboot
   
-  elif [[ $error == "possible miner stall" ]]; then
+elif [[ $error == "possible miner stall" ]]; then
   echo "$(date) - CRAP! Looks to be a miner stall Status: $mems $hashes $error" | tee -a ${TLOG}
   f.truncatelog
   ((rebcount++))
